@@ -48,57 +48,71 @@
         let gameRunning = false, gameInterval;
         highScoreElement.textContent = `HIGH: ${highScore.toString().padStart(5,'0')}`;
 
-        function randomPipeHeight() {
-            return Math.floor(Math.random() * 200) + 150;
-        }
+        // dmcGO Logo
+        let logo = new Image();
+        logo.src = 'https://i.imgur.com/0zK8vXj.png';
+        let logos = [];
 
+        function randomPipeHeight() { return Math.floor(Math.random() * 200) + 150; }
         function createPipe() {
             const height = randomPipeHeight();
             pipes.push({ x: canvas.width, top: height, passed: false });
+        }
+
+        function createFloatingLogo() {
+            if (Math.random() < 0.35 && gameRunning) {
+                logos.push({
+                    x: Math.random() * (canvas.width - 120),
+                    y: Math.random() * (canvas.height - 80),
+                    alpha: 0.75,
+                    life: 160
+                });
+            }
         }
 
         function draw() {
             ctx.fillStyle = '#0a0a1f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             ctx.strokeStyle = 'rgba(0,255,255,0.15)'; ctx.lineWidth = 2;
-            for (let i = 0; i < canvas.width; i += 40) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-            }
-            for (let i = 0; i < canvas.height; i += 40) {
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
-            }
+            for (let i = 0; i < canvas.width; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            for (let i = 0; i < canvas.height; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
 
+            ctx.shadowBlur = 15; ctx.fillStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff';
             pipes.forEach(pipe => {
-                ctx.fillStyle = '#ff00ff';
-                ctx.shadowColor = '#ff00ff';
-                ctx.shadowBlur = 15;
                 ctx.fillRect(pipe.x, 0, 60, pipe.top);
                 ctx.fillRect(pipe.x, pipe.top + 180, 60, canvas.height);
             });
             ctx.shadowBlur = 0;
 
+            // Floating dmcGO Logos
+            ctx.shadowBlur = 20; ctx.shadowColor = '#ff00ff';
+            logos.forEach((l, i) => {
+                ctx.globalAlpha = l.alpha;
+                ctx.drawImage(logo, l.x, l.y, 120, 60);
+                l.alpha -= 0.007;
+                l.life--;
+                if (l.life <= 0) logos.splice(i, 1);
+            });
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+
+            // Bird
             ctx.shadowBlur = 25; ctx.shadowColor = '#00ffff';
             ctx.fillStyle = '#00ffff';
-            ctx.beginPath();
-            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffff00';
-            ctx.beginPath(); ctx.arc(bird.x + 8, bird.y - 5, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(bird.x + 8, bird.y - 5, 6, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
         }
 
         function update() {
             if (!gameRunning) return;
-            bird.velocity += gravity;
-            bird.y += bird.velocity;
+            bird.velocity += gravity; bird.y += bird.velocity;
 
             for (let i = pipes.length - 1; i >= 0; i--) {
                 pipes[i].x -= 3;
                 if (pipes[i].x < -60) pipes.splice(i, 1);
-                
                 if (!pipes[i].passed && pipes[i].x + 60 < bird.x) {
-                    pipes[i].passed = true;
-                    score += 10;
+                    pipes[i].passed = true; score += 10;
                     scoreElement.textContent = `SCORE: ${score.toString().padStart(5,'0')}`;
                 }
             }
@@ -114,40 +128,29 @@
         function gameLoop() {
             update(); draw();
             if (pipes.length === 0 || pipes[pipes.length-1].x < canvas.width - 180) createPipe();
+            createFloatingLogo();
         }
 
-        function flap() {
-            if (gameRunning) bird.velocity = flapStrength;
-        }
-
+        function flap() { if (gameRunning) bird.velocity = flapStrength; }
         function startGame() {
-            bird.y = 250; bird.velocity = 0; score = 0; pipes = [];
-            scoreElement.textContent = 'SCORE: 00000';
-            gameOverScreen.style.display = 'none';
-            gameRunning = true;
-            createPipe(); createPipe();
-            clearInterval(gameInterval);
-            gameInterval = setInterval(gameLoop, 20);
+            bird.y = 250; bird.velocity = 0; score = 0; pipes = []; logos = [];
+            scoreElement.textContent = 'SCORE: 00000'; gameOverScreen.style.display = 'none';
+            gameRunning = true; createPipe(); createPipe();
+            clearInterval(gameInterval); gameInterval = setInterval(gameLoop, 20);
         }
-
         function endGame() {
-            gameRunning = false;
-            clearInterval(gameInterval);
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('neonFlapHigh', highScore);
-                highScoreElement.textContent = `HIGH: ${highScore.toString().padStart(5,'0')}`;
-            }
+            gameRunning = false; clearInterval(gameInterval);
+            if (score > highScore) { highScore = score; localStorage.setItem('neonFlapHigh', highScore); highScoreElement.textContent = `HIGH: ${highScore.toString().padStart(5,'0')}`; }
             finalScoreElement.innerHTML = `FINAL SCORE: ${score}<br>${score === highScore ? '<span style="color:#0f0">NEW HIGH SCORE!</span>' : ''}`;
             gameOverScreen.style.display = 'flex';
         }
-
         function restartGame() { startGame(); }
 
         document.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'ArrowUp') flap(); });
         canvas.addEventListener('click', flap);
         canvas.addEventListener('touchstart', e => { e.preventDefault(); flap(); });
 
+        logo.onload = () => draw();
         draw();
     </script>
 </body>
