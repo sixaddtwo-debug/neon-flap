@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON FLAP 🚀</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        body { margin:0; height:100vh; display:flex; justify-content:center; align-items:center; background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); font-family:'Press Start 2P',cursive; color:#0ff; overflow:hidden; }
+        .game-container { text-align:center; border:4px solid #0ff; border-radius:10px; padding:20px; background:rgba(0,0,0,0.9); box-shadow:0 0 40px #0ff; position:relative; }
+        h1 { margin:0 0 10px 0; text-shadow:0 0 20px #0ff; font-size:28px; letter-spacing:4px; }
+        canvas { border:4px solid #0ff; image-rendering:pixelated; box-shadow:0 0 30px #0ff; touch-action:none; }
+        .score, #highScore { position:absolute; background:rgba(0,0,0,0.7); padding:8px 20px; border:2px solid #0ff; border-radius:5px; font-size:18px; }
+        .score { top:20px; left:50%; transform:translateX(-50%); }
+        #highScore { top:60px; left:50%; transform:translateX(-50%); font-size:14px; }
+        button { margin-top:15px; padding:15px 40px; background:#0ff; color:#000; border:none; font-family:'Press Start 2P',cursive; font-size:16px; cursor:pointer; box-shadow:0 0 20px #0ff; }
+        button:hover { background:#fff; box-shadow:0 0 30px #fff; }
+        .game-over { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:30px; border:4px solid #f00; display:none; flex-direction:column; align-items:center; z-index:100; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>NEON FLAP</h1>
+        <div class="score" id="score">SCORE: 00000</div>
+        <div id="highScore">HIGH: 00000</div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div style="margin-top:15px;font-size:12px;opacity:0.8;">SPACE / TAP / CLICK to Flap</div>
+        <button onclick="startGame()">START GAME</button>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2 style="color:#f00;margin:0 0 20px 0;">CRASHED</h2>
+        <div id="finalScore" style="font-size:18px;margin-bottom:20px;"></div>
+        <button onclick="restartGame()">TRY AGAIN</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+
+        let bird = { x: 80, y: 300, velocity: 0, radius: 18 };
+        let gravity = 0.6, flapStrength = -12;
+        let pipes = [], score = 0, highScore = parseInt(localStorage.getItem('neonFlapHigh')) || 0;
+        let gameRunning = false, gameInterval;
+        highScoreElement.textContent = `HIGH: ${highScore.toString().padStart(5,'0')}`;
+
+        function randomPipeHeight() {
+            return Math.floor(Math.random() * 200) + 150;
+        }
+
+        function createPipe() {
+            const height = randomPipeHeight();
+            pipes.push({ x: canvas.width, top: height, passed: false });
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0a0a1f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(0,255,255,0.15)'; ctx.lineWidth = 2;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            pipes.forEach(pipe => {
+                ctx.fillStyle = '#ff00ff';
+                ctx.shadowColor = '#ff00ff';
+                ctx.shadowBlur = 15;
+                ctx.fillRect(pipe.x, 0, 60, pipe.top);
+                ctx.fillRect(pipe.x, pipe.top + 180, 60, canvas.height);
+            });
+            ctx.shadowBlur = 0;
+
+            ctx.shadowBlur = 25; ctx.shadowColor = '#00ffff';
+            ctx.fillStyle = '#00ffff';
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath(); ctx.arc(bird.x + 8, bird.y - 5, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            bird.velocity += gravity;
+            bird.y += bird.velocity;
+
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].x -= 3;
+                if (pipes[i].x < -60) pipes.splice(i, 1);
+                
+                if (!pipes[i].passed && pipes[i].x + 60 < bird.x) {
+                    pipes[i].passed = true;
+                    score += 10;
+                    scoreElement.textContent = `SCORE: ${score.toString().padStart(5,'0')}`;
+                }
+            }
+
+            if (bird.y - bird.radius < 0 || bird.y + bird.radius > canvas.height) endGame();
+            for (let pipe of pipes) {
+                if (bird.x + bird.radius > pipe.x && bird.x - bird.radius < pipe.x + 60) {
+                    if (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.top + 180) endGame();
+                }
+            }
+        }
+
+        function gameLoop() {
+            update(); draw();
+            if (pipes.length === 0 || pipes[pipes.length-1].x < canvas.width - 180) createPipe();
+        }
+
+        function flap() {
+            if (gameRunning) bird.velocity = flapStrength;
+        }
+
+        function startGame() {
+            bird.y = 250; bird.velocity = 0; score = 0; pipes = [];
+            scoreElement.textContent = 'SCORE: 00000';
+            gameOverScreen.style.display = 'none';
+            gameRunning = true;
+            createPipe(); createPipe();
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 20);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameInterval);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('neonFlapHigh', highScore);
+                highScoreElement.textContent = `HIGH: ${highScore.toString().padStart(5,'0')}`;
+            }
+            finalScoreElement.innerHTML = `FINAL SCORE: ${score}<br>${score === highScore ? '<span style="color:#0f0">NEW HIGH SCORE!</span>' : ''}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function restartGame() { startGame(); }
+
+        document.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'ArrowUp') flap(); });
+        canvas.addEventListener('click', flap);
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); flap(); });
+
+        draw();
+    </script>
+</body>
+</html>
