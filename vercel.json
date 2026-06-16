@@ -1,0 +1,9 @@
+{
+  "name": "neon-flap",
+  "version": 2,
+  "buildCommand": "echo 'Static HTML Game - No build needed'",
+  "outputDirectory": ".",
+  "framework": null,
+  "cleanUrls": true,
+  "trailingSlash": false
+}
