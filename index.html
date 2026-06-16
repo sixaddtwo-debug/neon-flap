@@ -48,7 +48,6 @@
         let gameRunning = false, gameInterval;
         highScoreElement.textContent = `HIGH: ${highScore.toString().padStart(5,'0')}`;
 
-        // dmcGO Logo
         let logo = new Image();
         logo.src = 'https://i.imgur.com/0zK8vXj.png';
         let logos = [];
@@ -61,18 +60,12 @@
 
         function createFloatingLogo() {
             if (Math.random() < 0.35 && gameRunning) {
-                logos.push({
-                    x: Math.random() * (canvas.width - 120),
-                    y: Math.random() * (canvas.height - 80),
-                    alpha: 0.75,
-                    life: 160
-                });
+                logos.push({ x: Math.random() * (canvas.width - 120), y: Math.random() * (canvas.height - 80), alpha: 0.75, life: 160 });
             }
         }
 
         function draw() {
             ctx.fillStyle = '#0a0a1f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
             ctx.strokeStyle = 'rgba(0,255,255,0.15)'; ctx.lineWidth = 2;
             for (let i = 0; i < canvas.width; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
             for (let i = 0; i < canvas.height; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
@@ -84,7 +77,6 @@
             });
             ctx.shadowBlur = 0;
 
-            // Floating dmcGO Logos
             ctx.shadowBlur = 20; ctx.shadowColor = '#ff00ff';
             logos.forEach((l, i) => {
                 ctx.globalAlpha = l.alpha;
@@ -96,7 +88,6 @@
             ctx.globalAlpha = 1;
             ctx.shadowBlur = 0;
 
-            // Bird
             ctx.shadowBlur = 25; ctx.shadowColor = '#00ffff';
             ctx.fillStyle = '#00ffff';
             ctx.beginPath(); ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2); ctx.fill();
